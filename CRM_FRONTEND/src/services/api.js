@@ -1,10 +1,18 @@
 // src/services/api.js
 import axios from 'axios'
 
+function resolveBaseURL() {
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL
+  }
+  if (typeof window !== 'undefined' && window.electronAPI?.isElectron) {
+    return 'http://127.0.0.1:5771/api'
+  }
+  return '/api'
+}
+
 const api = axios.create({
-  // In dev, Vite proxy will forward /api → http://localhost:5771
-  // In prod, set VITE_API_BASE_URL (e.g. http://localhost:5771/api)
-  baseURL: import.meta.env.VITE_API_BASE_URL ?? '/api',
+  baseURL: resolveBaseURL(),
 })
 
 export default api

@@ -1,6 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { BrowserRouter } from 'react-router-dom'
+import AppRouter from './components/AppRouter.jsx'
+import BackendGate from './components/BackendGate.jsx'
 import './index.css'
 import App from './App.jsx'
 import { AuthProvider } from './contextapi/AuthContext.jsx'
@@ -11,10 +12,12 @@ applyTheme(getPreferredTheme())
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <BrowserRouter>
-      <AuthProvider>
-        <App />
-      </AuthProvider>
-    </BrowserRouter>
+    <AppRouter>
+      <BackendGate>
+        <AuthProvider>
+          <App />
+        </AuthProvider>
+      </BackendGate>
+    </AppRouter>
   </StrictMode>,
 )

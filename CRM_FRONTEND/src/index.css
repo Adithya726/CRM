@@ -1654,3 +1654,122 @@ button.success:hover,
   color: var(--muted);
 }
 
+/* ── Desktop: backend connection gate ───────────────────── */
+.backendGateLoading {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  background: var(--shell-bg);
+  color: var(--text);
+}
+
+.backendGateLoading__spinner {
+  width: 42px;
+  height: 42px;
+  border: 3px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: backendSpin 0.85s linear infinite;
+}
+
+@keyframes backendSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.backendDisconnected {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  background: var(--shell-bg);
+}
+
+.backendDisconnected__card {
+  max-width: 440px;
+  width: 100%;
+  text-align: center;
+  padding: 2.25rem 2rem;
+  border-radius: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+
+.backendDisconnected__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 1.25rem;
+  border-radius: 50%;
+  background: var(--danger-weak);
+  color: var(--danger);
+}
+
+.backendDisconnected h1 {
+  font-size: 1.35rem;
+  margin-bottom: 0.75rem;
+}
+
+.backendDisconnected__detail {
+  color: var(--muted);
+  font-size: 0.95rem;
+  margin-bottom: 1rem;
+  line-height: 1.55;
+}
+
+.backendDisconnected__code {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-bottom: 1.25rem;
+}
+
+.backendDisconnected__code code {
+  font-family: ui-monospace, monospace;
+  color: var(--text);
+}
+
+.backendDisconnected__retry {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1.25rem;
+  border: none;
+  border-radius: 10px;
+  background: var(--primary);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.backendDisconnected__retry:hover:not(:disabled) {
+  background: var(--primary-hover);
+}
+
+.backendDisconnected__retry:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.backendDisconnected__spin {
+  animation: backendSpin 0.85s linear infinite;
+}
+
+.backendDisconnected__logs {
+  margin-top: 1.25rem;
+  font-size: 0.72rem;
+  color: var(--muted);
+  word-break: break-all;
+}
+
+.backendDisconnected__logs code {
+  font-family: ui-monospace, monospace;
+}
+
