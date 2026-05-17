@@ -1,0 +1,127 @@
+package com.crm.controller;
+
+import com.crm.model.ContractDTO;
+import com.crm.model.Customer;
+import com.crm.model.CustomerDTO;
+import com.crm.model.User;
+import com.crm.repository.UserRepository;
+import com.crm.service.ContractService;
+import com.crm.service.CustomerService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/admin")
+@CrossOrigin("*")
+public class AdminController {
+
+    @Autowired
+    private CustomerService customerService;
+
+    @Autowired
+    private ContractService contractService;
+
+    
+    @PostMapping("/customers")
+    public ResponseEntity<CustomerDTO> addCustomer(@RequestBody Customer customer) {
+        return ResponseEntity.ok(customerService.addCustomer(customer));
+    }
+
+    
+    @GetMapping("/customers")
+    public ResponseEntity<List<CustomerDTO>> getAllCustomers() {
+        return ResponseEntity.ok(customerService.getAllCustomers());
+    }
+
+    
+    @GetMapping("/customers/{id}")
+    public ResponseEntity<CustomerDTO> getCustomerById(@PathVariable Long id) {
+        return ResponseEntity.ok(customerService.getCustomerById(id));
+    }
+
+    
+    @PutMapping("/customers/{id}")
+    public ResponseEntity<CustomerDTO> updateCustomer(@PathVariable Long id,
+                                                    @RequestBody Customer customer) {
+        return ResponseEntity.ok(customerService.updateCustomer(id, customer));
+    }
+
+   
+    @DeleteMapping("/customers/{id}")
+    public ResponseEntity<String> deleteCustomer(@PathVariable Long id) {
+        customerService.deleteCustomer(id);
+        return ResponseEntity.ok("Customer deleted successfully.");
+    }
+
+    
+    @PostMapping("/contracts")
+    public ResponseEntity<ContractDTO> addContract(@RequestBody ContractDTO dto) {
+        return ResponseEntity.ok(contractService.addContract(dto));
+    }
+
+   
+    @GetMapping("/contracts")
+    public ResponseEntity<List<ContractDTO>> getAllContracts() {
+        return ResponseEntity.ok(contractService.getAllContracts());
+    }
+
+   
+    @GetMapping("/contracts/{id}")
+    public ResponseEntity<ContractDTO> getContractById(@PathVariable Long id) {
+        return ResponseEntity.ok(contractService.getContractById(id));
+    }
+
+    
+    @GetMapping("/contracts/customer/{customerId}")
+    public ResponseEntity<List<ContractDTO>> getContractsByCustomer(@PathVariable Long customerId) {
+        return ResponseEntity.ok(contractService.getContractsByCustomer(customerId));
+    }
+
+    /** Contracts for customer where today is between periodFrom and periodTo (server date). */
+    @GetMapping("/contracts/customer/{customerId}/active")
+    public ResponseEntity<List<ContractDTO>> getActiveContractsByCustomer(@PathVariable Long customerId) {
+        return ResponseEntity.ok(contractService.getActiveContractsByCustomer(customerId));
+    }
+
+    
+    @PutMapping("/contracts/{id}")
+    public ResponseEntity<ContractDTO> updateContract(@PathVariable Long id,
+                                                       @RequestBody ContractDTO dto) {
+        return ResponseEntity.ok(contractService.updateContract(id, dto));
+    }
+
+   
+    @DeleteMapping("/contracts/{id}")
+    public ResponseEntity<String> deleteContract(@PathVariable Long id,
+                                                 @RequestParam(value = "closeRemark", required = false) String closeRemark) {
+        contractService.deleteContract(id, closeRemark);
+        return ResponseEntity.ok("Contract deleted successfully.");
+    }
+    
+    
+    @Autowired
+    private UserRepository userRepository;
+
+    // Get all operators
+    @GetMapping("/operators")
+    public ResponseEntity<?> getOperators() {
+        return ResponseEntity.ok(userRepository.findByRole("OPERATOR"));
+    }
+
+    // Approve operator
+    @PutMapping("/operators/{id}/approve")
+    public ResponseEntity<?> approveOperator(@PathVariable Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (!user.getRole().equals("OPERATOR")) {
+            throw new RuntimeException("Only operators can be approved");
+        }
+
+        user.setApproved(true);
+        return ResponseEntity.ok(userRepository.save(user));
+    }
+}
