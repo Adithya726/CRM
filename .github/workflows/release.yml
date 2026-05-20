@@ -26,6 +26,7 @@ jobs:
   build-windows:
     name: Windows (NSIS .exe)
     runs-on: windows-latest
+    timeout-minutes: 45
     outputs:
       version: ${{ steps.meta.outputs.version }}
       tag: ${{ steps.meta.outputs.tag }}
@@ -101,6 +102,17 @@ jobs:
     name: macOS (DMG + .app dir) — x64 + arm64
     runs-on: macos-latest
     needs: build-windows
+    timeout-minutes: 60
+    env:
+      CI: "true"
+      # Avoid keychain/code-sign discovery prompts in CI
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      # Make tooling more verbose and deterministic on GitHub runners
+      npm_config_loglevel: "verbose"
+      npm_config_audit: "false"
+      npm_config_fund: "false"
+      ELECTRON_BUILDER_LOG_LEVEL: "debug"
+      DEBUG: "electron-builder,electron-builder:*"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -125,9 +137,29 @@ jobs:
         working-directory: CRM_BACKEND
         run: chmod +x mvnw
 
-      - name: Install dependencies
+      - name: Cache electron/electron-builder downloads
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/electron
+            ~/.cache/electron-builder
+          key: ${{ runner.os }}-electron-cache-node20-${{ hashFiles(format('{0}/package-lock.json', env.FRONTEND_DIR)) }}
+          restore-keys: |
+            ${{ runner.os }}-electron-cache-node20-
+            ${{ runner.os }}-electron-cache-
+
+      - name: Cache macOS JRE archives + extracted caches
+        id: cache-mac-jre
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ env.FRONTEND_DIR }}/resources/jre-archives
+            ${{ env.FRONTEND_DIR }}/resources/jre-cache
+          key: ${{ runner.os }}-adoptium-jre17-dualarch-v1
+
+      - name: Install dependencies (verbose)
         working-directory: ${{ env.FRONTEND_DIR }}
-        run: npm ci
+        run: npm ci --prefer-offline --no-progress
 
       - name: Align app version to release version
         working-directory: ${{ env.FRONTEND_DIR }}
@@ -135,13 +167,114 @@ jobs:
           VERSION="${{ needs.build-windows.outputs.version }}"
           npm version "$VERSION" --no-git-tag-version --allow-same-version
 
-      - name: Prepare macOS assets (backend + dual-arch JRE cache + icons)
+      - name: Build backend (Maven, non-interactive)
+        working-directory: CRM_BACKEND
+        shell: bash
+        run: |
+          set -euxo pipefail
+          ./mvnw -B -ntp clean package -DskipTests
+
+      - name: Copy backend JAR into Electron resources
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p "${{ env.FRONTEND_DIR }}/resources/backend"
+          JAR_PATH="$(ls -1 CRM_BACKEND/target/CRM_BACKEND*.jar | grep -v '\.original\.jar' | head -n 1)"
+          test -n "$JAR_PATH"
+          cp "$JAR_PATH" "${{ env.FRONTEND_DIR }}/resources/backend/crm-backend.jar"
+          ls -lh "${{ env.FRONTEND_DIR }}/resources/backend/crm-backend.jar"
+
+      - name: Download macOS JRE (arm64) if missing (fail-fast)
+        if: ${{ steps.cache-mac-jre.outputs.cache-hit != 'true' }}
+        shell: bash
+        run: |
+          set -euxo pipefail
+          FRONTEND="${{ env.FRONTEND_DIR }}"
+          ARCH="arm64"
+          DEST_DIR="$FRONTEND/resources/jre-cache/darwin-$ARCH"
+          JAVA_BIN="$DEST_DIR/Contents/Home/bin/java"
+          if [ -f "$JAVA_BIN" ]; then
+            echo "JRE cache already present: $DEST_DIR"
+            "$JAVA_BIN" -version || true
+            exit 0
+          fi
+
+          mkdir -p "$FRONTEND/resources/jre-archives"
+          TGZ="$FRONTEND/resources/jre-archives/jre-mac-$ARCH.tar.gz"
+          URL="https://api.adoptium.net/v3/binary/latest/17/ga/mac/aarch64/jre/hotspot/normal/eclipse?project=jdk"
+
+          # Fail fast if the download stalls: low speed for 30s, or >10 min total.
+          curl -fL "$URL" \
+            --retry 5 --retry-delay 2 --retry-all-errors \
+            --connect-timeout 20 --max-time 600 \
+            --speed-limit 1024 --speed-time 30 \
+            -o "$TGZ"
+
+          rm -rf "$FRONTEND/resources/jre-extract-$ARCH"
+          mkdir -p "$FRONTEND/resources/jre-extract-$ARCH"
+          tar -xzf "$TGZ" -C "$FRONTEND/resources/jre-extract-$ARCH"
+
+          JDK_DIR="$(find "$FRONTEND/resources/jre-extract-$ARCH" -maxdepth 1 -type d -name '*.jre' -o -name '*.jdk' -o -name 'jdk*' | head -n 1)"
+          test -n "$JDK_DIR"
+          rm -rf "$DEST_DIR"
+          mkdir -p "$FRONTEND/resources/jre-cache"
+          cp -R "$JDK_DIR" "$DEST_DIR"
+          test -f "$JAVA_BIN"
+          "$JAVA_BIN" -version
+
+      - name: Download macOS JRE (x64) if missing (fail-fast)
+        if: ${{ steps.cache-mac-jre.outputs.cache-hit != 'true' }}
+        shell: bash
+        run: |
+          set -euxo pipefail
+          FRONTEND="${{ env.FRONTEND_DIR }}"
+          ARCH="x64"
+          DEST_DIR="$FRONTEND/resources/jre-cache/darwin-$ARCH"
+          JAVA_BIN="$DEST_DIR/Contents/Home/bin/java"
+          if [ -f "$JAVA_BIN" ]; then
+            echo "JRE cache already present: $DEST_DIR"
+            "$JAVA_BIN" -version || true
+            exit 0
+          fi
+
+          mkdir -p "$FRONTEND/resources/jre-archives"
+          TGZ="$FRONTEND/resources/jre-archives/jre-mac-$ARCH.tar.gz"
+          URL="https://api.adoptium.net/v3/binary/latest/17/ga/mac/x64/jre/hotspot/normal/eclipse?project=jdk"
+
+          # Fail fast if the download stalls: low speed for 30s, or >10 min total.
+          curl -fL "$URL" \
+            --retry 5 --retry-delay 2 --retry-all-errors \
+            --connect-timeout 20 --max-time 600 \
+            --speed-limit 1024 --speed-time 30 \
+            -o "$TGZ"
+
+          rm -rf "$FRONTEND/resources/jre-extract-$ARCH"
+          mkdir -p "$FRONTEND/resources/jre-extract-$ARCH"
+          tar -xzf "$TGZ" -C "$FRONTEND/resources/jre-extract-$ARCH"
+
+          JDK_DIR="$(find "$FRONTEND/resources/jre-extract-$ARCH" -maxdepth 1 -type d -name '*.jre' -o -name '*.jdk' -o -name 'jdk*' | head -n 1)"
+          test -n "$JDK_DIR"
+          rm -rf "$DEST_DIR"
+          mkdir -p "$FRONTEND/resources/jre-cache"
+          cp -R "$JDK_DIR" "$DEST_DIR"
+          test -f "$JAVA_BIN"
+          "$JAVA_BIN" -version
+
+      - name: Generate icons (verbose)
         working-directory: ${{ env.FRONTEND_DIR }}
-        run: npm run predist:mac
+        shell: bash
+        run: |
+          set -euxo pipefail
+          node --version
+          npm --version
+          npm run icons
 
       - name: Build macOS installers (x64 + arm64)
         working-directory: ${{ env.FRONTEND_DIR }}
-        run: npm run dist:mac
+        shell: bash
+        run: |
+          set -euxo pipefail
+          npm run dist:mac --silent=false
 
       - name: Upload artifacts (macOS)
         uses: actions/upload-artifact@v4
