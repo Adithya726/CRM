@@ -80,9 +80,8 @@ jobs:
         working-directory: ${{ env.FRONTEND_DIR }}
         shell: pwsh
         run: |
-          $v = "${{ steps.meta.outputs.version }}"
-          # Updates package.json + package-lock.json without creating a git tag.
-          npm version $v --no-git-tag-version
+           VERSION="${{ needs.build-windows.outputs.version }}"
+           npm version "$VERSION" --no-git-tag-version --allow-same-version
 
       - name: Build Windows installer
         working-directory: ${{ env.FRONTEND_DIR }}
