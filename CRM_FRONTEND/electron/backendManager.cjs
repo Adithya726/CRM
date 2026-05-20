@@ -6,13 +6,14 @@
  * 3. Spawn: java -jar crm-backend.jar --spring.profiles.active=desktop
  *    Env: CRM_USER_DATA, CRM_DB_PATH → SQLite in app data
  * 4. Poll GET /api/health until status=UP and database=UP
- * 5. On app quit → taskkill child process tree (Windows)
+ * 5. On app quit → kill backend (Windows: taskkill /T; macOS: SIGTERM)
  */
 const { spawn, execSync } = require('child_process')
 const { EventEmitter } = require('events')
 const fs = require('fs')
 const net = require('net')
 const path = require('path')
+const { app } = require('electron')
 const config = require('./config.cjs')
 const { createLogger } = require('./logger.cjs')
 
@@ -85,7 +86,8 @@ class BackendManager extends EventEmitter {
       candidates.push(config.paths.bundledJava)
     }
 
-    if (config.paths.isDev) {
+    /** In packaged builds, only the bundled JRE is supported (no system Java). */
+    if (!app.isPackaged) {
       if (process.env.JAVA_HOME) {
         candidates.push(path.join(process.env.JAVA_HOME, 'bin', bin))
       }

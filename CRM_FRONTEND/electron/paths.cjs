@@ -1,15 +1,30 @@
+const fs = require('fs')
 const path = require('path')
 const { app } = require('electron')
 
 /**
- * Packaged layout (after NSIS install):
- *   <install>/CRM Desktop.exe
- *   <install>/resources/app.asar
- *   <install>/resources/backend/crm-backend.jar
- *   <install>/resources/jre/bin/java.exe
+ * Bundled JRE binary path:
+ * - Windows: resources/jre/bin/java.exe
+ * - macOS:   resources/jre/Contents/Home/bin/java (Temurin .jdk layout)
+ * - Linux:   resources/jre/bin/java
+ */
+function resolveBundledJava(jreRoot) {
+  if (process.platform === 'darwin') {
+    const macHomeJava = path.join(jreRoot, 'Contents', 'Home', 'bin', 'java')
+    if (fs.existsSync(macHomeJava)) return macHomeJava
+  }
+  const name = process.platform === 'win32' ? 'java.exe' : 'java'
+  return path.join(jreRoot, 'bin', name)
+}
+
+/**
+ * Packaged layout:
+ *   Windows: <install>/resources/{backend,jre}
+ *   macOS:     CRM Desktop.app/Contents/Resources/{backend,jre}
  *
- * User data (writable):
- *   %APPDATA%/crm-desktop/data/crm-desktop.db
+ * User data:
+ *   Windows: %APPDATA%/crm-desktop/
+ *   macOS:   ~/Library/Application Support/crm-desktop/
  */
 function createPaths() {
   const isDev = !app.isPackaged
@@ -42,6 +57,7 @@ function createPaths() {
     preload: path.join(__dirname, 'preload.cjs'),
     icon: path.join(appRoot, 'build', 'icon.png'),
     iconIco: path.join(appRoot, 'build', 'icon.ico'),
+    iconIcns: path.join(appRoot, 'build', 'icon.icns'),
     userData,
     dataDir,
     sqlite: path.join(dataDir, 'crm-desktop.db'),
@@ -51,12 +67,8 @@ function createPaths() {
     backendJar: path.join(backendResources, 'crm-backend.jar'),
     devBackendJar,
     jreRoot,
-    bundledJava: path.join(
-      jreRoot,
-      'bin',
-      process.platform === 'win32' ? 'java.exe' : 'java',
-    ),
+    bundledJava: resolveBundledJava(jreRoot),
   }
 }
 
-module.exports = { createPaths }
+module.exports = { createPaths, resolveBundledJava }

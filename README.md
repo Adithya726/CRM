@@ -1,18 +1,19 @@
 # CRM Desktop
 
-**Standalone customer relationship management software for Windows** — install once, run offline, no Java or database setup required.
+**Standalone customer relationship management software** — install once, run offline, no Java or database setup required. Ships for **Windows** (NSIS installer) and **macOS** (DMG, Intel + Apple Silicon).
 
 [![Release](https://img.shields.io/github/v/release/Adithya726/CRM?label=latest%20release)](https://github.com/Adithya726/CRM/releases)
-[![Platform](https://img.shields.io/badge/platform-Windows%20x64-blue)](https://github.com/Adithya726/CRM/releases)
-[![License](https://img.shields.io/badge/license-Private-lightgrey)](#)
+[![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20macOS-blue)](https://github.com/Adithya726/CRM/releases)
 
-> **Download the installer:** [GitHub Releases](https://github.com/Adithya726/CRM/releases) — get `CRM-Desktop-Setup-x.y.z.exe` from the latest release assets.
+> **Download installers:** [GitHub Releases](https://github.com/Adithya726/CRM/releases) — Windows: `CRM-Desktop-Setup-x.y.z.exe` · macOS: `CRM-Desktop-x.y.z-arm64.dmg` / `CRM-Desktop-x.y.z-x64.dmg`
+
+Mac packaging, Gatekeeper, and notarization: **[docs/MACOS_BUILD.md](docs/MACOS_BUILD.md)**
 
 ---
 
 ## Overview
 
-CRM Desktop is a full-stack CRM packaged as a professional Windows desktop application. It combines a modern React interface with a Spring Boot API, embedded **SQLite** database, and a **bundled Java runtime** — delivered through **Electron** and **electron-builder**.
+CRM Desktop is a full-stack CRM packaged as a professional **Electron** desktop application for **Windows** and **macOS**. It combines a React UI with a Spring Boot API, embedded **SQLite** database, and a **bundled Java runtime**.
 
 | Mode | Description |
 |------|-------------|
@@ -91,7 +92,7 @@ flowchart TB
 | Backend | [Spring Boot](https://spring.io/projects/spring-boot) 3.3, Spring Security, Spring Data JPA |
 | Database (desktop) | [SQLite](https://www.sqlite.org/) via Hibernate Community Dialects |
 | Database (web dev) | MySQL 8 (optional local dev) |
-| Packaging | [electron-builder](https://www.electron.build/) (NSIS installer) |
+| Packaging | [electron-builder](https://www.electron.build/) — NSIS (Windows), DMG + `.app` (macOS) |
 | Runtime | Eclipse Temurin 17 JRE (bundled) |
 
 ---
@@ -117,8 +118,9 @@ CRM/
 │   └── release/                 # Installer output (not in git)
 │
 ├── docs/
-│   ├── RELEASE.md               # Versioning & GitHub Releases guide
-│   └── RELEASE_NOTES_TEMPLATE.md
+│   ├── RELEASE.md
+│   ├── RELEASE_NOTES_TEMPLATE.md
+│   └── MACOS_BUILD.md           # macOS DMG, signing, Gatekeeper
 │
 └── README.md
 ```
@@ -127,10 +129,17 @@ CRM/
 
 ## Installation (end users)
 
+### Windows
+
 1. Open **[Releases](https://github.com/Adithya726/CRM/releases)**
-2. Download **`CRM-Desktop-Setup-x.y.z.exe`** from the latest release
+2. Download **`CRM-Desktop-Setup-x.y.z.exe`**
 3. Run the installer (Windows 10/11 x64)
 4. Launch **CRM Desktop** from Start Menu or desktop shortcut
+
+### macOS
+
+1. Download **`CRM-Desktop-x.y.z-arm64.dmg`** (Apple Silicon) or **`CRM-Desktop-x.y.z-x64.dmg`** (Intel), then open the DMG and drag **CRM Desktop** to **Applications**.
+2. On first launch, if macOS blocks the app (**Gatekeeper**), use **System Settings → Privacy & Security** → **Open Anyway**, or right-click → **Open**. For publicly distributed builds, use a **signed and notarized** installer (see [docs/MACOS_BUILD.md](docs/MACOS_BUILD.md)).
 
 **Default login (first launch only)**
 
@@ -143,12 +152,12 @@ Change the password after first login in production deployments.
 
 **User data location**
 
-```
-%APPDATA%\crm-desktop\
-  data\crm-desktop.db
-  backups\
-  logs\
-```
+| OS | Path |
+|----|------|
+| Windows | `%APPDATA%\crm-desktop\` |
+| macOS | `~/Library/Application Support/crm-desktop/` |
+
+Under that folder: `data/crm-desktop.db`, `backups/`, `logs/`.
 
 ---
 
@@ -177,7 +186,7 @@ cd CRM_FRONTEND
 npm run electron
 ```
 
-This builds the backend JAR and downloads the JRE if missing, then starts Vite + Electron with SQLite in `%APPDATA%/crm-desktop/`.
+This builds the backend JAR and downloads the JRE if missing, then starts Vite + Electron with SQLite under the OS app data directory.
 
 ### Run backend only (MySQL — web dev)
 
@@ -200,7 +209,11 @@ Requires API on `http://localhost:5771` (proxy configured in Vite).
 
 ---
 
-## Building the Windows installer
+## Building installers
+
+Production builds package the React app, Electron shell, Spring Boot JAR, and bundled JRE (platform-specific).
+
+### Build Windows installer
 
 From `CRM_FRONTEND`:
 
@@ -208,20 +221,35 @@ From `CRM_FRONTEND`:
 npm run dist
 ```
 
-**Pipeline (`predist` + build):**
+**Output:** `CRM_FRONTEND/release/CRM-Desktop-Setup-1.0.0.exe`
 
-1. `npm run build:backend` — Maven fat JAR → `resources/backend/crm-backend.jar`
-2. `npm run download:jre` — Temurin 17 JRE → `resources/jre/`
-3. `npm run icons` — generate `build/icon.png` / `icon.ico`
-4. Vite production build + electron-builder
+### Build macOS installers (.dmg + .app)
 
-**Output**
+On a **Mac**, from `CRM_FRONTEND`:
 
-```
-CRM_FRONTEND/release/CRM-Desktop-Setup-1.0.0.exe
+```bash
+npm run predist:mac
+npm run dist:mac
 ```
 
-Do **not** commit `.exe` files to git. Upload them to [GitHub Releases](https://github.com/Adithya726/CRM/releases).
+**Outputs:** `release/CRM-Desktop-*-arm64.dmg`, `release/CRM-Desktop-*-x64.dmg`, and unpacked `.app` bundles. See [docs/MACOS_BUILD.md](docs/MACOS_BUILD.md).
+
+### Pipeline summary
+
+**Windows (`npm run dist` / `predist`):**
+
+1. `npm run build:backend` — fat JAR → `resources/backend/crm-backend.jar`
+2. `npm run download:jre` — Temurin JRE for **current** OS
+3. `npm run icons` — `icon.png`, `icon.ico`, `icon.icns`
+4. Vite + electron-builder
+
+**macOS (`npm run dist:mac` / `predist:mac`):**
+
+1. Same backend + `npm run download:jre:mac-cache` (Intel **and** Apple Silicon JREs into `resources/jre-cache/`)
+2. `beforePack` selects the correct JRE per architecture into `resources/jre`
+3. electron-builder → DMG + `dir`
+
+Do **not** commit installers or generated JREs to git. Upload assets to [GitHub Releases](https://github.com/Adithya726/CRM/releases).
 
 See **[docs/RELEASE.md](docs/RELEASE.md)** for tagging, versioning, and publishing.
 
@@ -244,8 +272,8 @@ Keep `version` in `CRM_FRONTEND/package.json` aligned with release tags.
 ## Roadmap
 
 - [ ] Code-signed Windows installer (SmartScreen trust)
+- [ ] Apple Developer ID sign + notarize macOS DMGs
 - [ ] Auto-update via `electron-updater`
-- [ ] macOS build (optional)
 - [ ] In-app backup/restore UI
 - [ ] Custom branding & installer themes
 - [ ] CI/CD GitHub Actions for automated releases
@@ -258,6 +286,7 @@ Keep `version` in `CRM_FRONTEND/package.json` aligned with release tags.
 |----------|---------|
 | [docs/RELEASE.md](docs/RELEASE.md) | GitHub Releases workflow & deployment |
 | [docs/RELEASE_NOTES_TEMPLATE.md](docs/RELEASE_NOTES_TEMPLATE.md) | Copy-paste release notes |
+| [docs/MACOS_BUILD.md](docs/MACOS_BUILD.md) | macOS DMG, Gatekeeper, notarization |
 | [CRM_FRONTEND/DESKTOP.md](CRM_FRONTEND/DESKTOP.md) | Desktop packaging technical details |
 
 ---

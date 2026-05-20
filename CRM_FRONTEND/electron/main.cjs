@@ -72,6 +72,9 @@ backendManager.on('status', (payload) => {
 })
 
 function getIcon() {
+  if (process.platform === 'darwin' && fs.existsSync(config.paths.iconIcns)) {
+    return nativeImage.createFromPath(config.paths.iconIcns)
+  }
   if (fs.existsSync(config.paths.icon)) {
     return nativeImage.createFromPath(config.paths.icon)
   }

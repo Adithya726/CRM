@@ -25,8 +25,10 @@ desktop.ini
 **/resources/jre-extract/
 
 # Generated app icons (source: build/icon.svg — run npm run icons)
-**/build/icon.png
-**/build/icon.ico
+**/resources/jre-cache/
+**/resources/jre-mac-*.tar.gz
+**/resources/jre-extract-*/
+**/build/icon.icns
 
 # Logs
 **/*.log

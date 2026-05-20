@@ -30,9 +30,15 @@ resources/jre/
 resources/jre-download.zip
 resources/jre-extract/
 
+# Dual-arch macOS JRE cache (npm run download:jre:mac-cache)
+resources/jre-cache/
+resources/jre-mac-*.tar.gz
+resources/jre-extract-*/
+
 # Generated icons (source tracked: build/icon.svg)
 build/icon.png
 build/icon.ico
+build/icon.icns
 
 # Runtime databases (desktop uses %APPDATA%/crm-desktop)
 *.db

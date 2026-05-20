@@ -14,11 +14,15 @@
     "icons": "node scripts/generate-icons.mjs",
     "build:backend": "node scripts/build-backend.mjs",
     "download:jre": "node scripts/download-jre.mjs",
+    "download:jre:mac-cache": "node scripts/download-mac-jre-cache.mjs",
     "electron": "concurrently -k \"cross-env VITE_ELECTRON=true vite --mode electron --port 5173\" \"wait-on http://127.0.0.1:5173 && cross-env NODE_ENV=development electron .\"",
     "preelectron": "node scripts/ensure-backend-jar.mjs && node scripts/ensure-jre.mjs",
     "predist": "npm run build:backend && npm run download:jre && npm run icons",
+    "predist:mac": "npm run build:backend && npm run download:jre:mac-cache && npm run icons",
     "dist": "cross-env VITE_ELECTRON=true vite build --mode electron && electron-builder --win",
-    "dist:dir": "cross-env VITE_ELECTRON=true vite build --mode electron && electron-builder --win --dir"
+    "dist:dir": "cross-env VITE_ELECTRON=true vite build --mode electron && electron-builder --win --dir",
+    "dist:mac": "cross-env VITE_ELECTRON=true vite build --mode electron && electron-builder --mac --x64 --arm64",
+    "dist:mac:dir": "cross-env VITE_ELECTRON=true vite build --mode electron && electron-builder --mac --dir"
   },
   "dependencies": {
     "axios": "^1.15.2",
@@ -42,7 +46,9 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^16.3.0",
+    "png2icons": "^2.0.1",
     "sharp": "^0.34.2",
+    "tar": "^7.5.15",
     "to-ico": "^1.1.5",
     "vite": "^7.0.4",
     "wait-on": "^8.0.3"
@@ -52,6 +58,7 @@
     "productName": "CRM Desktop",
     "copyright": "Copyright © 2026 Adithya",
     "asar": true,
+    "beforePack": "./scripts/before-pack.cjs",
     "directories": {
       "output": "release",
       "buildResources": "build"
@@ -66,19 +73,26 @@
       {
         "from": "resources/backend",
         "to": "backend",
-        "filter": ["**/*", "*.jar"]
+        "filter": [
+          "**/*",
+          "*.jar"
+        ]
       },
       {
         "from": "resources/jre",
         "to": "jre",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "win": {
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "build/icon.ico",
@@ -97,6 +111,40 @@
       "createStartMenuShortcut": true,
       "shortcutName": "CRM Desktop",
       "artifactName": "CRM-Desktop-Setup-${version}.${ext}"
+    },
+    "mac": {
+      "category": "public.app-category.business",
+      "icon": "build/icon.icns",
+      "darkModeSupport": true,
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "type": "distribution",
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.inherit.plist",
+      "artifactName": "CRM-Desktop-${version}-${arch}.${ext}",
+      "target": [
+        "dmg",
+        "dir"
+      ]
+    },
+    "dmg": {
+      "title": "${productName} ${version}",
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ],
+      "window": {
+        "width": 540,
+        "height": 380
+      }
     }
   }
 }

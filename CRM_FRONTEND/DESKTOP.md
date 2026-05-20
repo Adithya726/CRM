@@ -14,8 +14,8 @@ No Java install. No MySQL. No database configuration.
 |-----------|----------------------|
 | Electron + React UI | `app.asar` |
 | Spring Boot API | `resources/backend/crm-backend.jar` |
-| Java 17 JRE | `resources/jre/bin/java.exe` |
-| SQLite database | `%APPDATA%/crm-desktop/data/crm-desktop.db` (created on first run) |
+| Java 17 JRE | Windows: `resources/jre/bin/java.exe` · macOS: `resources/jre/Contents/Home/bin/java` |
+| SQLite database | Windows: `%APPDATA%\crm-desktop\data\crm-desktop.db` · macOS: `~/Library/Application Support/crm-desktop/data/crm-desktop.db` |
 
 ## First login
 
@@ -29,14 +29,34 @@ Change this password after first login.
 ## User data
 
 ```
-%APPDATA%/crm-desktop/
+Windows:  %APPDATA%\crm-desktop\
+macOS:    ~/Library/Application Support/crm-desktop/
   data/crm-desktop.db
-  backups/           ← rolling SQLite backups
+  backups/
   logs/desktop.log
   logs/backend.log
 ```
 
-## Build installer (developers)
+## macOS installer (.dmg + .app)
+
+Build **on a Mac** (Apple ships code-signing tools; cross-compiling macOS installers from Windows is not supported).
+
+```bash
+cd CRM_FRONTEND
+npm install
+npm run predist:mac   # JAR + Intel + Apple Silicon JRE cache + icons
+npm run dist:mac
+```
+
+Outputs (under `release/`):
+
+* `CRM-Desktop-1.0.0-x64.dmg` — Intel Macs
+* `CRM-Desktop-1.0.0-arm64.dmg` — Apple Silicon (M1/M2/M3)
+* Unpacked `.app` bundles under `release/mac-*` when using `dir` target
+
+See **[../docs/MACOS_BUILD.md](../docs/MACOS_BUILD.md)** for Gatekeeper, notarization, and signing.
+
+## Build installer (Windows developers)
 
 ```powershell
 cd CRM_FRONTEND
