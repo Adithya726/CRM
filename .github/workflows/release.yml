@@ -80,8 +80,8 @@ jobs:
         working-directory: ${{ env.FRONTEND_DIR }}
         shell: pwsh
         run: |
-           VERSION="${{ needs.build-windows.outputs.version }}"
-           npm version "$VERSION" --no-git-tag-version --allow-same-version
+           $VERSION="${{ needs.build-windows.outputs.version }}"
+           npm version $VERSION --no-git-tag-version --allow-same-version
 
       - name: Build Windows installer
         working-directory: ${{ env.FRONTEND_DIR }}
