@@ -133,7 +133,7 @@ jobs:
         working-directory: ${{ env.FRONTEND_DIR }}
         run: |
           VERSION="${{ needs.build-windows.outputs.version }}"
-          npm version "$VERSION" --no-git-tag-version
+          npm version "$VERSION" --no-git-tag-version --allow-same-version
 
       - name: Prepare macOS assets (backend + dual-arch JRE cache + icons)
         working-directory: ${{ env.FRONTEND_DIR }}
